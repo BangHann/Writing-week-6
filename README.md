@@ -406,6 +406,8 @@ export default Keranjang
 ```
 8. useDispatch
 - Dispatch : mengirim action ke dalam reducer
+- action gaboleh ada synchronusnya
+- dispatch prosesnya synchronus, jadi langsung mengirim ke dalam reducer
 ```jsx
 //Counter.jsx
 import { useDispatch } from "react-redux";
@@ -427,4 +429,135 @@ const allReducer = combineReducers({
 const store = createStore(allReducer);
 
 export default store;
+```
+### Middleware Thunk
+- Thunk termasuk middleware
+- middleware thunk dapat menghandle action dispatch bersifat asynchronus
+#### cara menggunakan thunk
+1. install tthunk
+```jsx
+npm install redux-thunk
+```
+2. import redux-thunk, kemudian taruh applyMiddlewaare pada store
+```jsx
+//index.js pada store
+import { createStore, combineReducers, applyMiddleware } from 'redux';
+import thunk from 'redux-thunk';
+import todoReducer from '../reducer/todoReducer';
+
+const allReducer = combineReducers({
+  todo: todoReducer,
+  // user: userReducer,
+  // product: productReducer
+})
+
+const store = createStore(allReducer, applyMiddleware(thunk))
+
+export default store;
+```
+3. cara kerja async(dispatch) :
+  - ubah loading jadi true
+  - ambil data dari API
+  - axios -> isi data todos, loading jadi false
+  - berhasil -> loading jadi flase (pada reducer)
+  - setelah berhasil, ke proses axios
+  - harus install axios dahulu
+```jsx
+ npm install axios
+```
+```jsx
+//todoAction
+import axios from "axios";
+
+export const GET_TODO = "GET_TODO";
+export const FETCH_START = "FETCH_START";
+export const SUCCESS_GET_TODO = "SUCCESS_GET_TODO";
+
+function fetchStart() {
+  return {
+    type: FETCH_START,
+  };
+}
+
+function successGetTodo(data) {
+  return {
+    type: SUCCESS_GET_TODO,
+    payload: data,
+  };
+}
+
+export const getTodo = () => {
+  return async (dispatch) => {
+    // ubah loading jadi true
+    dispatch(fetchStart());
+
+    // axios -> isi data todos, loading jadi false
+    const result = await axios.get(
+      "https://63478a450484786c6e82998f.mockapi.io/todo"
+    );
+    dispatch(successGetTodo(result.data));
+  };
+};
+```
+
+```jsx
+todoReducer.js
+import { FETCH_START, SUCCESS_GET_TODO } from "../action/todoAction";
+
+const initialState = {
+  todos: [],
+  isLoading: false,
+  err: null,
+};
+
+const todoReducer = (state = initialState, action) => {
+  switch (action.type) {
+    case FETCH_START:
+      return {
+        ...state,
+        isLoading: true
+      }
+    case SUCCESS_GET_TODO:
+      return {
+        ...state,
+        todos: action.payload,
+        isLoading: false
+      }
+    default:
+      return state;
+  }
+};
+
+export default todoReducer;
+```
+4. tampilkan todoList
+```jsx
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { getTodo } from "../redux/action/todoAction";
+
+function TodoList() {
+  const dispatch = useDispatch();
+  const { todos, isLoading } = useSelector((state) => state.todo);
+
+  useEffect(() => {
+    dispatch(getTodo());
+  }, []);
+
+  return (
+    <div>
+      <h2>Todo List</h2>
+
+      <ul>
+        {isLoading ? (
+          <span>Loading...</span>
+        ) : (
+          todos.map((item) => <li key={item.id}>{item.todo}</li>)
+        )}
+      </ul>
+    </div>
+  );
+}
+
+export default TodoList;
 ```
